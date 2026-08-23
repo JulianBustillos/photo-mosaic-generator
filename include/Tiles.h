@@ -2,6 +2,7 @@
 
 #include "Photo.h"
 #include "FaceDetectionROI.h"
+#include "Descriptor.h"
 #include <vector>
 #include <string>
 #include <tuple>
@@ -11,8 +12,6 @@ class Tiles
 {
 private:
     static const std::string TempDir;
-    static constexpr int FeatureDiv = 4;
-    static constexpr int NbFeatures = 3 * FeatureDiv * FeatureDiv;
     static constexpr int TileParam[2] = {cv::IMWRITE_PNG_COMPRESSION, 0};
 
 public:
@@ -33,14 +32,14 @@ private:
     {
         std::string _imagePath = "";
         std::string _tilePath = "";
-        double _features[NbFeatures] = { 0 };
+        Descriptor _descriptor;
     };
 
 private:
     bool checkExtension(const std::string& extension) const;
     void createTemp() const;
     void removeTemp() const;
-    void computeTileFeatures(const cv::Mat& image, const FaceDetectionROI& roi, const cv::Size& tileSize, Data& data, int threadID);
+    void computeTileDescriptor(const cv::Mat& image, const FaceDetectionROI& roi, const cv::Size& tileSize, Data& data, int threadID);
     void computeCropInfo(const cv::Mat& image, cv::Rect& box, const FaceDetectionROI& roi, const cv::Size& tileSize, int threadID);
     void exportTile(const cv::Mat& tile, const std::string& tilePath);
 
@@ -50,5 +49,5 @@ private:
     const int _gridWidth;
     const int _gridHeight;
     std::vector<Data> _tilesData;
-    std::vector<double> _photoFeatures;
+    std::vector<Descriptor> _photoDescriptors;
 };

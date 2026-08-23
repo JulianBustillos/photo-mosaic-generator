@@ -102,26 +102,25 @@ void Tiles::compute(const FaceDetectionROI& roi, const Photo& photo)
         std::string index = std::to_string(t);
         index = std::string(padding - index.length(), '0') + index;
         _tilesData[t]._tilePath = _tempPath + "\\tile_" + index + ".png";
-        computeTileFeatures(image, roi, photo.getTileSize(), _tilesData[t], omp_get_thread_num());
+        computeTileDescriptor(image, roi, photo.getTileSize(), _tilesData[t], omp_get_thread_num());
         Console::Out::addBarSteps(1);
     }
     OutputManager::get().cstderr_restore();
     Log::Logger::get().log(Log::TRACE) <<"Tiles features computed.";
     Console::Out::waitBar();
 
-    _photoFeatures.resize(_gridWidth * _gridHeight * NbFeatures);
+    _photoDescriptors.resize(_gridWidth * _gridHeight);
     for (int mosaicId = 0; mosaicId < _gridWidth * _gridHeight; mosaicId++)
     {
-        double* features = &_photoFeatures[mosaicId * NbFeatures];
-        ImageUtils::computeFeatures(photo.getTile(mosaicId), features, FeatureDiv, NbFeatures);
+        ImageUtils::computeDescriptor(photo.getTile(mosaicId), _photoDescriptors[mosaicId]);
     }
     Log::Logger::get().log(Log::TRACE) << "Photo features computed.";
 }
 
 double Tiles::computeDistance(int i, int j, int tileID) const
 {
-    const double* features = &_photoFeatures[(i * _gridWidth + j) * NbFeatures];
-    return ImageUtils::featureDistance(features, _tilesData[tileID]._features, NbFeatures);
+    int mosaicId = (i * _gridWidth + j);
+    return ImageUtils::descriptorDistance(_photoDescriptors[mosaicId], _tilesData[tileID]._descriptor);
 }
 
 const std::string Tiles::getTileFilepath(int tileId) const
@@ -171,14 +170,14 @@ void Tiles::removeTemp() const
     }
 }
 
-void Tiles::computeTileFeatures(const cv::Mat& image, const FaceDetectionROI& roi, const cv::Size& tileSize, Data& data, int threadID)
+void Tiles::computeTileDescriptor(const cv::Mat& image, const FaceDetectionROI& roi, const cv::Size& tileSize, Data& data, int threadID)
 {
     cv::Rect box;
     cv::Mat tileMat;
 
     computeCropInfo(image, box, roi, tileSize, threadID);
     ImageUtils::resample(tileMat, tileSize, image, box, ImageUtils::LANCZOS);
-    ImageUtils::computeFeatures(tileMat, data._features, FeatureDiv, NbFeatures);
+    ImageUtils::computeDescriptor(tileMat, data._descriptor);
     exportTile(tileMat, data._tilePath);
 }
 

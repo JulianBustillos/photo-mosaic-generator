@@ -144,7 +144,7 @@ void GaussianMixtureModel<N>::runKmeansPlusPlus(int nbComponents)
         std::fill(weights.begin(), weights.end(), 0);
         for (int b = 0; b < nbValues; b++)
         {
-            intervals[2 * b] = b;
+            intervals[2 * b + 0] = b;
             intervals[2 * b + 1] = b + 1;
             weights[2 * b] = MathUtils::IntMax;
         }

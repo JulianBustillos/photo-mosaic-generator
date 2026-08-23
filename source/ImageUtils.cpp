@@ -515,47 +515,58 @@ void ImageUtils::resample(cv::Mat& target, const cv::Size targetSize, const cv::
         computeResampling(target, targetSize, source, box, samplingFilter.get());
 }
 
-void ImageUtils::computeFeatures(const cv::Mat& image, double* features, int featureDiv, int nbFeatures)
-{
+void ImageUtils::computeDescriptor(const cv::Mat& image, Descriptor& descriptor) {
     const int width = image.cols;
     const int height = image.rows;
-    int blockWidth = (int)ceil(width / (double)featureDiv);
-    int blockHeight = (int)ceil(height / (double)featureDiv);
 
-    for (int k = 0; k < nbFeatures; k++)
-        features[k] = 0;
+    const double div = (double)Descriptor::FeatureDiv;
+    const int blockWidth = (width + div - 1) / div;
+    const int blockHeight = (height + div - 1) / div;
 
-    for (int i = 0, p = 0; i < height; i++)
-    {
-        for (int j = 0; j < width; j++)
-        {
-            int blockPos = 3 * (featureDiv * (i / blockHeight) + j / blockWidth);
-            for (int c = 0; c < 3; c++, p++)
-            {
-                features[blockPos + c] += image.data[p];
-            }
+    for (int i = 0; i < height; i++) {
+        const cv::Vec3b* src = image.ptr<cv::Vec3b>(i);
+
+        for (int j = 0; j < width; j++) {
+            double L, a, b;
+
+            ColorUtils::RGBToOKLab(src[j][2], src[j][1], src[j][0], L, a, b);
+
+            const int blockRow = i / blockHeight;
+            const int blockCol = j / blockWidth;
+            const int block = blockRow * div + blockCol;
+
+            descriptor._features[3 * block + 0] += L;
+            descriptor._features[3 * block + 1] += a;
+            descriptor._features[3 * block + 2] += b;
         }
     }
 
-    for (int k = 0; k < nbFeatures; k++)
-    {
-        int corrBlockHeight = (k < featureDiv * (featureDiv - 1) * 3) ? blockHeight : height - (featureDiv - 1) * blockHeight;
-        int corrBlockWidth = (((k / 4 + 1) % featureDiv) != 0) ? blockWidth : width - (featureDiv - 1) * blockWidth;
-        features[k] /= corrBlockWidth * corrBlockHeight;
+    for (int blockRow = 0; blockRow < div; blockRow++) {
+        for (int blockCol = 0; blockCol < div; blockCol++) {
+            const int block = blockRow * div + blockCol;
+
+            const int x0 = blockCol * blockWidth;
+            const int x1 = std::min(x0 + blockWidth, width);
+
+            const int y0 = blockRow * blockHeight;
+            const int y1 = std::min(y0 + blockHeight, height);
+
+            const int pixelCount = (x1 - x0) * (y1 - y0);
+
+            for (int c = 0; c < 3; c++)
+                descriptor._features[3 * block + c] /= pixelCount;
+        }
     }
 }
 
-double ImageUtils::featureDistance(const double* features1, const double* features2, int nbFeatures)
-{
-    //Use deltaE distance
+double ImageUtils::descriptorDistance(const Descriptor descriptor1, const Descriptor descriptor2) {
+    // Use Euclidian distance with OKLab colors
     double sumDist = 0.;
-    for (int i = 0; i < nbFeatures; i += 3)
-    {
-        double dB = features1[i] - features2[i];
-        double dG = features1[i + 1] - features2[i + 1];
-        double dR = features1[i + 2] - features2[i + 2];
-        double mR = (features1[i + 2] + features2[i + 2]) * 0.5;
-        double sqDist = (2. + mR / 256.) * dR * dR + 4 * dG * dG + (2. + (255. - mR) / 256.) * dB * dB;
+    for (int i = 0; i < Descriptor::NbFeatures; i += 3) {
+        double dL = descriptor1._features[i + 0] - descriptor2._features[i];
+        double da = descriptor1._features[i + 1] - descriptor2._features[i + 1];
+        double db = descriptor1._features[i + 2] - descriptor2._features[i + 2];
+        double sqDist = dL * dL + da * da + db * db;
         sumDist += sqrt(sqDist);
     }
 
