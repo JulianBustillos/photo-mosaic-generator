@@ -515,64 +515,6 @@ void ImageUtils::resample(cv::Mat& target, const cv::Size targetSize, const cv::
         computeResampling(target, targetSize, source, box, samplingFilter.get());
 }
 
-void ImageUtils::computeDescriptor(const cv::Mat& image, Descriptor& descriptor) {
-    const int width = image.cols;
-    const int height = image.rows;
-
-    const double div = (double)Descriptor::FeatureDiv;
-    const int blockWidth = (width + div - 1) / div;
-    const int blockHeight = (height + div - 1) / div;
-
-    for (int i = 0; i < height; i++) {
-        const cv::Vec3b* src = image.ptr<cv::Vec3b>(i);
-
-        for (int j = 0; j < width; j++) {
-            double L, a, b;
-
-            ColorUtils::RGBToOKLab(src[j][2], src[j][1], src[j][0], L, a, b);
-
-            const int blockRow = i / blockHeight;
-            const int blockCol = j / blockWidth;
-            const int block = blockRow * div + blockCol;
-
-            descriptor._features[3 * block + 0] += L;
-            descriptor._features[3 * block + 1] += a;
-            descriptor._features[3 * block + 2] += b;
-        }
-    }
-
-    for (int blockRow = 0; blockRow < div; blockRow++) {
-        for (int blockCol = 0; blockCol < div; blockCol++) {
-            const int block = blockRow * div + blockCol;
-
-            const int x0 = blockCol * blockWidth;
-            const int x1 = std::min(x0 + blockWidth, width);
-
-            const int y0 = blockRow * blockHeight;
-            const int y1 = std::min(y0 + blockHeight, height);
-
-            const int pixelCount = (x1 - x0) * (y1 - y0);
-
-            for (int c = 0; c < 3; c++)
-                descriptor._features[3 * block + c] /= pixelCount;
-        }
-    }
-}
-
-double ImageUtils::descriptorDistance(const Descriptor descriptor1, const Descriptor descriptor2) {
-    // Use Euclidian distance with OKLab colors
-    double sumDist = 0.;
-    for (int i = 0; i < Descriptor::NbFeatures; i += 3) {
-        double dL = descriptor1._features[i + 0] - descriptor2._features[i];
-        double da = descriptor1._features[i + 1] - descriptor2._features[i + 1];
-        double db = descriptor1._features[i + 2] - descriptor2._features[i + 2];
-        double sqDist = dL * dL + da * da + db * db;
-        sumDist += sqrt(sqDist);
-    }
-
-    return sumDist;
-}
-
 void ImageUtils::gaussianBlur(uchar* image, const cv::Size& size, double sigma)
 {
     std::vector<uchar> buffer(3 * size.width * size.height);

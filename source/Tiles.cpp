@@ -2,7 +2,6 @@
 #include "CustomException.h"
 #include "OutputManager.h"
 #include "ImageUtils.h"
-#include "ProgressBar.h"
 #include "Log.h"
 #include "Console.h"
 #include <filesystem>
@@ -112,7 +111,7 @@ void Tiles::compute(const FaceDetectionROI& roi, const Photo& photo)
     _photoDescriptors.resize(_gridWidth * _gridHeight);
     for (int mosaicId = 0; mosaicId < _gridWidth * _gridHeight; mosaicId++)
     {
-        ImageUtils::computeDescriptor(photo.getTile(mosaicId), _photoDescriptors[mosaicId]);
+        _photoDescriptors[mosaicId].compute(photo.getTile(mosaicId));
     }
     Log::Logger::get().log(Log::TRACE) << "Photo features computed.";
 }
@@ -120,7 +119,7 @@ void Tiles::compute(const FaceDetectionROI& roi, const Photo& photo)
 double Tiles::computeDistance(int i, int j, int tileID) const
 {
     int mosaicId = (i * _gridWidth + j);
-    return ImageUtils::descriptorDistance(_photoDescriptors[mosaicId], _tilesData[tileID]._descriptor);
+    return _photoDescriptors[mosaicId].distance(_tilesData[tileID]._descriptor);
 }
 
 const std::string Tiles::getTileFilepath(int tileId) const
@@ -177,7 +176,7 @@ void Tiles::computeTileDescriptor(const cv::Mat& image, const FaceDetectionROI& 
 
     computeCropInfo(image, box, roi, tileSize, threadID);
     ImageUtils::resample(tileMat, tileSize, image, box, ImageUtils::LANCZOS);
-    ImageUtils::computeDescriptor(tileMat, data._descriptor);
+    data._descriptor.compute(tileMat);
     exportTile(tileMat, data._tilePath);
 }
 

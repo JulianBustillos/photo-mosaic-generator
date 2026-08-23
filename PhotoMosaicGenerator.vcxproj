@@ -126,6 +126,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="source\ColorUtils.cpp" />
+    <ClCompile Include="source\Descriptor.cpp" />
     <ClCompile Include="source\FaceDetectionROI.cpp" />
     <ClCompile Include="source\ImageUtils.cpp" />
     <ClCompile Include="source\main.cpp" />
